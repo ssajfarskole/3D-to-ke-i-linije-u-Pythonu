@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="hr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>IT Avantura: 3D Vizualizacija</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 1200px;
+            height: 600px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            border: 4px solid #444;
+        }
+
+        canvas {
+            display: block;
+            background: #000;
+            width: 100%;
+            height: 100%;
+        }
+
+        #uiLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        /* POPUP STILOVI */
+        .popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #fff, #ecf0f1);
+            border: 4px solid #2c3e50;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            display: none;
+            z-index: 100;
+            min-width: 450px;
+        }
+
+        .popup h2 {
+            margin-top: 0;
+            color: #e67e22;
+            font-size: 2rem;
+        }
+
+        .popup p {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            color: #555;
+        }
+
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #219150;
+            margin-top: 20px;
+            transition: 0.1s;
+        }
+
+        .btn:hover {
+            background: #2ecc71;
+            transform: translateY(-3px);
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #219150;
+        }
+
+        /* NOVI DIZAJN ZA MAPU */
+        #mapPopup {
+            min-width: 600px;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            border: 4px solid #ecf0f1;
+        }
+
+        #mapPopup h2 {
+            color: #f1c40f;
+            text-shadow: 2px 2px 0 #000;
+            margin-bottom: 30px;
+        }
+
+        .map-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .map-level-btn {
+            width: 180px;
+            height: 180px;
+            border-radius: 20px;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Stanja levela na mapi */
+        .lvl-locked {
+            background: #7f8c8d;
+            color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .lvl-unlocked {
+            background: #f1c40f;
+            color: #d35400;
+            animation: pulse 2s infinite;
+        }
+
+        .lvl-completed {
+            background: #27ae60;
+            color: white;
+            border: 4px solid #2ecc71;
+        }
+
+        .lvl-completed::after {
+            content: '✔';
+            font-size: 40px;
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: white;
+            color: #27ae60;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border: 2px solid #27ae60;
+        }
+
+        .map-level-btn:hover:not(.lvl-locked) {
+            transform: scale(1.05);
+        }
+
+        .map-level-btn:active:not(.lvl-locked) {
+            transform: scale(0.95);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.03);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* QUIZ DIZAJN */
+        #quizBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 4px solid #2980b9;
+            border-radius: 12px;
+            padding: 25px;
+            display: none;
+            width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            pointer-events: auto;
+            z-index: 90;
+        }
+
+        .ansBtn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            text-align: left;
+            padding-left: 20px;
+            transition: 0.2s;
+        }
+
+        .ansBtn:hover {
+            background: #2980b9;
+            padding-left: 30px;
+        }
+
+        /* HUD */
+        #hudLeft {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 30px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #hudRight {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 5px;
+        }
+
+        #msgBox {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #f1c40f;
+            border: 2px solid #fff;
+            padding: 10px 40px;
+            border-radius: 30px;
+            font-size: 24px;
+            display: none;
+            font-weight: bold;
+            text-shadow: 1px 1px 0 #000;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: translateX(-50%) scale(0);
+            }
+
+            to {
+                transform: translateX(-50%) scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="600"></canvas>
+        <div id="uiLayer">
+
+            <div id="startPopup" class="popup interactive" style="display:block;">
+                <h2>IT AVANTURA: 3D SVIJET</h2>
+                <p>
+                    Dobrodošli u virtualni sustav!<br>
+                    Tvoj zadatak je skupiti znanje i spasiti kod.<br>
+                    <br>Upravljanje: <strong>Strelice + Razmaknica</strong>
+                </p>
+                <button class="btn" onclick="showMap()">POGLEDAJ MAPU</button>
+            </div>
+
+            <div id="mapPopup" class="popup interactive">
+                <h2>MAPA RAZINA</h2>
+                <div class="map-container">
+                    <button id="btnLvl1" class="map-level-btn lvl-unlocked" onclick="tryStartLevel(1)">
+                        LEVEL 1<br><span style="font-size:0.8em">Teorija 3D</span>
+                    </button>
+                    <div style="font-size: 40px; color: white;">➔</div>
+                    <button id="btnLvl2" class="map-level-btn lvl-locked" onclick="tryStartLevel(2)">
+                        LEVEL 2<br><span style="font-size:0.8em">Python Kod</span>
+                    </button>
+                </div>
+                <p style="color:white; margin-top:20px; font-size:1rem;">Klikni na otključani level da kreneš.</p>
+            </div>
+
+            <div id="levelPopup" class="popup interactive">
+                <h2>LEVEL ZAVRŠEN!</h2>
+                <p id="lvlMsg">Odlično! Znanje je prikupljeno.</p>
+                <button id="nextLvlBtn" class="btn" onclick="showMap()">NATRAG NA MAPU</button>
+            </div>
+
+            <div id="gameOverPopup" class="popup interactive">
+                <h2 style="color:#c0392b">GAME OVER</h2>
+                <p>Izgubio si sve živote.</p>
+                <button class="btn" onclick="returnToMapFromDeath()">NATRAG NA MAPU</button>
+            </div>
+
+            <div id="quizBox">
+                <h3 id="qText">Pitanje...</h3>
+                <div id="ansDiv"></div>
+            </div>
+
+            <div id="hudLeft">Level: <span id="lvlDisp">1</span></div>
+            <div id="hudRight"></div>
+            <div id="msgBox"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURACIJA I SLIKE ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function loadImg(src) { const img = new Image(); img.src = src; return img; }
+
+        const playerImg = loadImg('img/alienGreen_stand.png');
+        const playerWalk = loadImg('img/alienGreen_walk1.png');
+        const playerJump = loadImg('img/alienGreen_jump.png');
+
+        // Level 1 Okoliš
+        const bgLvl1 = loadImg('img/colored_grass.png');
+        const groundLvl1 = loadImg('img/grassMid.png');
+        const platLvl1 = loadImg('img/grassHalf_mid.png');
+
+        // Level 2 Okoliš
+        const bgLvl2 = loadImg('img/bg_lvl2.png');
+        const groundLvl2 = loadImg('img/grassMid2.png');
+        const dirtCliffLeft = loadImg('img/dirtCliff_left.png');
+        const dirtCliffRight = loadImg('img/dirtCliff_right.png');
+        const dirtMid = loadImg('img/dirt.png');
+
+        const starImg = loadImg('img/star.png');
+        const heartImg = loadImg('img/heart_254x254.png');
+        const flagImg = loadImg('img/flagYellow1.png');
+        const bombImg = loadImg('img/bomb.png');
+        const mouseImg = loadImg('img/mouse.png');
+        const ghostImg = loadImg('img/ghost.png');
+        const blobImg = loadImg('img/blob.png');
+
+        const GRAVITY = 0.45;
+        const SPEED = 4.5;
+        const JUMP_FORCE = -13;
+        const TILE = 64;
+
+        // --- STANJE IGRE I MAPA ---
+        let gameState = { screen: 'START', level: 1, lives: 5, cameraX: 0, checkpointX: 100, checkpointY: 100 };
+        let gameProgress = { maxUnlocked: 1, level1Done: false }; // Za praćenje mape
+
+        let player = { x: 100, y: 100, w: 60, h: 80, dx: 0, dy: 0, jumping: true, facingRight: true, invulnerable: false };
+        let keys = {};
+        let mapTiles = []; let platforms = []; let enemies = []; let items = []; let bombs = []; let finishLineX = 0;
+        let currentBg = bgLvl1; let currentGround = groundLvl1; let currentPlat = platLvl1;
+
+        // --- PITANJA (Teži distraktori, pametan redoslijed) ---
+        const questions = [
+            // --- LEVEL 1 (Teorija) ---
+            { q: "Koja os čini razliku između 2D (Mario) i 3D (Stvarni svijet)?", a: ["D os (Dijagonala)", "Z os (Dubina)", "W os (Width)"], c: 1 },
+            { q: "Kocka koju smo pokazali u razredu je primjer:", a: ["Dvodimenzionalnog lika", "Trodimenzionalnog tijela", "Vektorske grafike"], c: 1 },
+            { q: "Koordinate (x, y, z) za dron predstavljaju:", a: ["Širinu, Visinu, Dubinu (položaj)", "Brzinu, Smjer, Vrijeme", "Boju, Veličinu, Oblik"], c: 0 },
+            { q: "Što matematički dobivamo spajanjem dviju točaka?", a: ["Kružnicu", "Pravac (dužinu)", "Kut"], c: 1 },
+            { q: "Koji je glavni razlog korištenja 3D simulacija u inženjerstvu?", a: ["Da zgrada ljepše izgleda na slici", "Provjera stabilnosti prije gradnje", "Zbog zakonskih propisa o bojama"], c: 1 },
+            { q: "U primjeru drona, što točno definira Z koordinata?", a: ["Geografsku dužinu", "Udaljenost od sjevera", "Nadmorsku visinu"], c: 2 },
+
+            // --- LEVEL 2 (Kodiranje) ---
+            { q: "Što radi naredba 'import matplotlib.pyplot'?", a: ["Instalira Python na računalo", "Uvozi biblioteku za crtanje", "Pokreće igru u Pythonu"], c: 1 },
+            { q: "Koju varijablu koristimo kao 'platno' za crtanje?", a: ["canvas", "plt", "figura"], c: 2 },
+            { q: "Koji argument je ključan za aktivaciju 3D prostora?", a: ["type='3d'", "projection='3d'", "view='3d'"], c: 1 },
+            { q: "Koja funkcija služi za spajanje točaka linijom?", a: ["osi.line()", "osi.connect()", "osi.plot()"], c: 2 },
+            { q: "Koji je obavezan redoslijed argumenata u funkciji scatter?", a: ["(y, x, z)", "(z, y, x)", "(x, y, z)"], c: 2 },
+            { q: "Kojim znakom u Pythonu započinjemo definiciju liste?", a: ["Vitičastom zagradom {", "Običnom zagradom (", "Uglatom zagradom ["], c: 2 },
+            { q: "Kako ispravno definiramo boju unutar naredbe?", a: ["color=red (bez navodnika)", "c='red' (s navodnicima)", "fill='red'"], c: 1 },
+            { q: "Zašto koristimo liste [x1, x2] umjesto pojedinačnih varijabli?", a: ["Da izbjegnemo ponavljanje koda", "Jer Python prihvaća samo liste", "Da graf bude veći"], c: 0 }
+        ];
+
+        // --- SUSTAV MAPE I NOVE FUNKCIJE ---
+
+        function showMap() {
+            // Sakrij sve druge ekrane
+            document.getElementById('startPopup').style.display = 'none';
+            document.getElementById('levelPopup').style.display = 'none';
+            document.getElementById('gameOverPopup').style.display = 'none';
+
+            gameState.screen = 'MAP';
+            document.getElementById('mapPopup').style.display = 'block';
+
+            // Ažuriraj izgled gumba na mapi
+            const b1 = document.getElementById('btnLvl1');
+            const b2 = document.getElementById('btnLvl2');
+
+            // LEVEL 1 LOGIKA
+            if (gameProgress.level1Done) {
+                b1.className = 'map-level-btn lvl-completed';
+            } else {
+                b1.className = 'map-level-btn lvl-unlocked';
+            }
+
+            // LEVEL 2 LOGIKA
+            if (gameProgress.maxUnlocked >= 2) {
+                if (gameProgress.level1Done && gameState.level === 2 && false) { // Ovdje bi mogla ici logika za L2 complete
+                    // Ako zelis da se i L2 pozeleni kad se predje igra
+                    b2.className = 'map-level-btn lvl-completed';
+                } else {
+                    b2.className = 'map-level-btn lvl-unlocked';
+                }
+            } else {
+                b2.className = 'map-level-btn lvl-locked';
+            }
+        }
+
+        function tryStartLevel(lvl) {
+            if (lvl > gameProgress.maxUnlocked) return; // Ne daj ako je zaključano
+
+            document.getElementById('mapPopup').style.display = 'none';
+            initLevel(lvl);
+        }
+
+        function returnToMapFromDeath() {
+            // Resetiraj živote, ali ne i napredak otključavanja
+            gameState.lives = 5;
+            showMap();
+        }
+
+        // --- GENERIRANJE LEVELA ---
+        function initLevel(lvl) {
+            gameState.level = lvl;
+            gameState.screen = 'PLAYING';
+
+            // Reset igrača
+            player.x = 100; player.y = 100; player.dy = 0; player.dx = 0;
+            gameState.lives = 5; // Reset života pri svakom startu levela
+            gameState.cameraX = 0;
+            gameState.checkpointX = 100; gameState.checkpointY = 300;
+
+            player.invulnerable = false;
+            mapTiles = []; platforms = []; enemies = []; items = []; bombs = [];
+
+            // Postavi grafiku
+            if (lvl === 1) {
+                currentBg = bgLvl1; currentGround = groundLvl1; currentPlat = platLvl1;
+            } else {
+                currentBg = bgLvl2; currentGround = groundLvl2; currentPlat = dirtMid;
+            }
+
+            const groundY = 500;
+            let cx = 0;
+
+            // --- LEVEL 1 (S Tlom i Platformama) ---
+            if (lvl === 1) {
+                addGround(0, 6, groundY);
+                cx = 6 * TILE;
+                for (let i = 0; i < 60; i++) {
+                    let r = Math.random();
+                    if (r < 0.15) {
+                        platforms.push({ x: cx + (1.5 * TILE) - TILE, y: groundY - 120, w: TILE * 2, h: 30 });
+                        cx += 3 * TILE;
+                    } else {
+                        addGround(cx / TILE, 1, groundY);
+                        if (Math.random() < 0.25) spawnMouse(cx + TILE / 2, groundY - 50, TILE);
+                        cx += TILE;
+                    }
+                }
+                addGround(cx / TILE, 10, groundY);
+                finishLineX = cx + 300;
+            }
+            // --- LEVEL 2 (Leteći otoci - Popravljeno) ---
+            else {
+                addGround(0, 10, groundY);
+                cx = 10 * TILE;
+                let targetDist = 5500; let currentDist = cx; let lastY = groundY;
+
+                while (currentDist < targetDist) {
+                    let gap = (currentDist === cx) ? 120 : (120 + Math.random() * 80);
+                    currentDist += gap;
+                    let platW = TILE * (2 + Math.floor(Math.random() * 3));
+                    let changeY = (Math.random() * 160) - 80;
+                    let platY = lastY + changeY;
+                    if (platY < 200) platY = 200; if (platY > groundY) platY = groundY;
+
+                    platforms.push({ x: currentDist, y: platY, w: platW, h: 30 });
+                    lastY = platY;
+                    if (Math.random() < 0.5) spawnMouse(currentDist + platW / 2, platY - 50, platW);
+                    currentDist += platW;
+                }
+                currentDist += 200;
+                addGround(currentDist / TILE, 10, groundY);
+                finishLineX = currentDist + 300;
+            }
+
+            // --- OBJEKTI (Zvijezde/Pitanja) ---
+            let starCount = lvl === 1 ? 6 : 8;
+            let questionOffset = lvl === 1 ? 0 : 6;
+            let step = (finishLineX - 800) / starCount;
+
+            for (let i = 0; i < starCount; i++) {
+                let sx = 600 + (i * step) + Math.random() * 100;
+                let sy = groundY - 200 - Math.random() * 100;
+                let qIndex = questionOffset + i;
+                if (qIndex < questions.length) {
+                    items.push({ x: sx, y: sy, w: 48, h: 48, taken: false, q: questions[qIndex] });
+                }
+            }
+
+            // --- NEPRIJATELJI ---
+            let ghostGap = 2000;
+            for (let gx = 800; gx < finishLineX - 500; gx += ghostGap) {
+                let actualX = gx + Math.random() * 500;
+                let baseY = 380 + Math.random() * 50;
+                enemies.push({
+                    type: 'ghost', x: actualX, y: baseY, baseY: baseY, w: 50, h: 50,
+                    alive: true, _ghost: true, homing: (lvl === 2),
+                    speed: (lvl === 1 ? 2.5 : 2.0),
+                    angle: Math.random() * Math.PI * 2, amplitude: (lvl === 1 ? 120 : 80)
+                });
+            }
+
+            let blobCount = lvl === 1 ? 4 : 6;
+            for (let i = 0; i < blobCount; i++) {
+                let bx = 900 + Math.random() * (finishLineX - 1200);
+                let dir = Math.random() < 0.5 ? 3 : -3;
+                enemies.push({
+                    type: 'blob', x: bx, y: 150 + Math.random() * 200, w: 60, h: 50,
+                    dx: dir, minX: bx - 200, maxX: bx + 200, alive: true
+                });
+            }
+            updateHud();
+        }
+
+        function spawnMouse(centerX, y, widthArea) {
+            let speed = 1.5 + Math.random();
+            let dir = (Math.random() < 0.5) ? speed : -speed;
+            let safeOffset = (widthArea ? widthArea / 2 - 40 : 20);
+            let finalX = centerX + ((Math.random() * safeOffset * 2) - safeOffset);
+            enemies.push({ type: 'mouse', x: finalX, y: y, w: 60, h: 50, dx: dir, startX: centerX, range: 250, alive: true });
+        }
+
+        function addGround(idx, count, y) {
+            for (let i = 0; i < count; i++) mapTiles.push({ x: (idx + i) * TILE, y: y, w: TILE, h: TILE });
+        }
+
+        // --- GAME LOOP ---
+        document.addEventListener('keydown', e => { keys[e.code] = true; });
+        document.addEventListener('keyup', e => keys[e.code] = false);
+
+        function update() {
+            if (gameState.screen !== 'PLAYING') return;
+
+            if (keys['ArrowRight']) { player.dx = SPEED; player.facingRight = true; }
+            else if (keys['ArrowLeft']) { player.dx = -SPEED; player.facingRight = false; }
+            else { player.dx = 0; }
+
+            if ((keys['Space'] || keys['ArrowUp']) && !player.jumping) {
+                player.dy = JUMP_FORCE; player.jumping = true;
+            }
+            player.dy += GRAVITY; player.x += player.dx; player.y += player.dy;
+
+            let onGround = false;
+            mapTiles.forEach(t => {
+                if (checkRectCollide(player, t)) {
+                    if (player.dy > 0 && player.y + player.h < t.y + player.dy + 20) {
+                        player.y = t.y - player.h; player.dy = 0; player.jumping = false; onGround = true;
+                    }
+                }
+            });
+
+            platforms.forEach(p => {
+                if (player.x + player.w > p.x + 10 && player.x < p.x + p.w - 10) {
+                    if (player.dy > 0 && player.y + player.h <= p.y + player.dy + 20 && player.y + player.h >= p.y - 10) {
+                        player.y = p.y - player.h; player.dy = 0; player.jumping = false; onGround = true;
+                    }
+                }
+            });
+
+            if (player.y > canvas.height + 100) loseLife("Pao si u provaliju!");
+
+            let targetX = player.x - 300;
+            if (targetX < 0) targetX = 0; if (targetX > finishLineX - 600) targetX = finishLineX - 600;
+            gameState.cameraX += (targetX - gameState.cameraX) * 0.1;
+
+            enemies.forEach(ent => {
+                if (!ent.alive) return;
+                if (ent._ghost) {
+                    if (ent.homing) {
+                        const dist = Math.abs(player.x - ent.x);
+                        if (dist < 700) {
+                            const pxCenter = player.x + player.w / 2; const exCenter = ent.x + ent.w / 2;
+                            if (Math.abs(pxCenter - exCenter) > 10) ent.x += (pxCenter < exCenter ? -1 : 1) * ent.speed;
+                        }
+                    } else {
+                        ent.x -= 2.0;
+                        if (ent.x < gameState.cameraX - 100) { ent.x = gameState.cameraX + 1300; ent.baseY = 380 + Math.random() * 50; }
+                    }
+                    ent.angle += 0.04; ent.y = ent.baseY + Math.sin(ent.angle) * ent.amplitude;
+                    const ghostHit = { x: ent.x + 15, y: ent.y + 15, w: ent.w - 30, h: ent.h - 30 };
+                    if (checkRectCollide(player, ghostHit)) loseLife("Duh te uhvatio!");
+                }
+                else if (ent.type === 'blob') {
+                    ent.x += ent.dx; if (ent.x < ent.minX || ent.x > ent.maxX) ent.dx *= -1;
+                    const blobHit = { x: ent.x + 10, y: ent.y + 10, w: ent.w - 20, h: ent.h - 20 };
+                    if (checkRectCollide(player, blobHit)) loseLife("Blob te spržio!");
+                }
+                else if (ent.type === 'mouse') {
+                    let checkX = ent.x + (ent.dx > 0 ? ent.w + 5 : -5);
+                    let hasGround = false;
+                    for (let t of mapTiles) { if (checkX >= t.x && checkX <= t.x + t.w && Math.abs(t.y - (ent.y + ent.h)) < 20) { hasGround = true; break; } }
+                    if (!hasGround) {
+                        for (let p of platforms) { if (checkX >= p.x && checkX <= p.x + p.w && Math.abs(p.y - (ent.y + ent.h)) < 20) { hasGround = true; break; } }
+                    }
+                    if (!hasGround || ent.x > ent.startX + ent.range || ent.x < ent.startX - ent.range) ent.dx *= -1;
+                    ent.x += ent.dx;
+                    if (checkRectCollide(player, ent)) {
+                        if (player.dy > 0 && player.y + player.h < ent.y + ent.h / 2 + 25) { ent.alive = false; player.dy = -10; showMsg("Miš uništen!"); }
+                        else { loseLife("Ugrizao te miš!"); }
+                    }
+                }
+            });
+
+            if (Math.random() < (0.005 * gameState.level)) {
+                let bombX = player.x + (Math.random() * 600 - 300); bombs.push({ x: bombX, y: -50, w: 40, h: 40, active: true });
+            }
+            bombs.forEach(b => {
+                if (!b.active) return;
+                b.y += 5; if (b.y > 600) b.active = false;
+                const bombHit = { x: b.x + 10, y: b.y + 10, w: b.w - 20, h: b.h - 20 };
+                if (checkRectCollide(player, bombHit)) { b.active = false; loseLife("BUM! Bomba!"); }
+            });
+
+            items.forEach(it => { if (!it.taken && checkRectCollide(player, it)) openQuiz(it); });
+
+            if (player.x > finishLineX) {
+                if (items.filter(i => !i.taken).length === 0) levelComplete();
+                else { showMsg("Moraš skupiti sve zvijezde!"); player.dx = -10; player.x -= 20; }
+            }
+        }
+
+        function checkRectCollide(r1, r2) {
+            return (r1.x + 20 < r2.x + r2.w && r1.x + r1.w - 20 > r2.x && r1.y + 10 < r2.y + r2.h && r1.y + r1.h > r2.y);
+        }
+
+        function loseLife(msg) {
+            if (player.invulnerable) return;
+            gameState.lives--; updateHud(); showMsg(msg); player.invulnerable = true;
+            setTimeout(() => { player.invulnerable = false; }, 2000);
+
+            if (gameState.lives <= 0) {
+                gameState.screen = 'GAMEOVER';
+                document.getElementById('gameOverPopup').style.display = 'block';
+            } else {
+                player.x = gameState.checkpointX; player.y = gameState.checkpointY; player.dy = 0; player.dx = 0;
+                gameState.cameraX = player.x - 300; if (gameState.cameraX < 0) gameState.cameraX = 0;
+            }
+        }
+
+        function levelComplete() {
+            gameState.screen = 'LEVEL_COMPLETE';
+            let popup = document.getElementById('levelPopup');
+            popup.style.display = 'block';
+
+            // Ažuriraj napredak
+            if (gameState.level === 1) {
+                gameProgress.level1Done = true;
+                gameProgress.maxUnlocked = 2; // Otključaj level 2
+                document.getElementById('lvlMsg').innerHTML = "Bravo! Teorija savladana.<br>Level 2 je sada otključan na mapi!";
+            } else {
+                document.getElementById('lvlMsg').innerHTML = "ČESTITAM! <br>Pobjedio si igru i naučio Python grafiku!";
+            }
+        }
+
+        function openQuiz(item) {
+            gameState.screen = 'QUIZ'; player.dx = 0; keys = {};
+            let box = document.getElementById('quizBox'); box.style.display = 'block';
+            document.getElementById('qText').innerText = item.q.q;
+            let div = document.getElementById('ansDiv'); div.innerHTML = '';
+
+            item.q.a.forEach((ans, idx) => {
+                let btn = document.createElement('button'); btn.className = 'ansBtn';
+                btn.innerText = (idx + 1) + ". " + ans;
+                btn.onclick = () => {
+                    if (idx === item.q.c) {
+                        item.taken = true; showMsg("Točno! Checkpoint spremljen.");
+                        gameState.checkpointX = player.x; gameState.checkpointY = player.y - 10;
+                    } else { loseLife("Krivo! Gubiš život."); item.taken = true; }
+                    box.style.display = 'none'; gameState.screen = 'PLAYING'; keys = {};
+                };
+                div.appendChild(btn);
+            });
+        }
+
+        function showMsg(txt) {
+            let m = document.getElementById('msgBox'); m.innerText = txt; m.style.display = 'block';
+            setTimeout(() => m.style.display = 'none', 2000);
+        }
+
+        function updateHud() {
+            document.getElementById('lvlDisp').innerText = gameState.level;
+            const rightHud = document.getElementById('hudRight'); rightHud.innerHTML = '';
+            for (let i = 0; i < gameState.lives; i++) {
+                let img = document.createElement('img'); img.src = 'img/heart_254x254.png';
+                img.style.width = '40px'; img.style.height = '40px'; rightHud.appendChild(img);
+            }
+        }
+
+        function draw() {
+            if (gameState.screen === 'MAP') {
+                // Crtaj samo pozadinu u mapi
+                ctx.drawImage(bgLvl1, 0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            ctx.drawImage(currentBg, 0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(-gameState.cameraX, 0);
+
+            mapTiles.forEach(t => {
+                ctx.drawImage(currentGround, t.x, t.y, t.w, t.h);
+                ctx.fillStyle = (gameState.level === 1) ? "#5d4037" : "#d35400";
+                ctx.fillRect(t.x, t.y + t.h - 5, t.w, canvas.height);
+            });
+
+            platforms.forEach(p => {
+                let maxW = p.w; let startX = p.x;
+                for (let x = startX; x < startX + maxW; x += TILE) {
+                    let tileImg = currentPlat;
+                    if (gameState.level === 2) {
+                        if (x === startX) tileImg = dirtCliffLeft;
+                        else if (x >= startX + maxW - TILE) tileImg = dirtCliffRight;
+                        else tileImg = dirtMid;
+                    } else { tileImg = platLvl1; }
+                    ctx.drawImage(tileImg, x, p.y, TILE, p.h);
+                }
+            });
+
+            ctx.drawImage(flagImg, finishLineX, 500 - 70, 70, 70);
+            items.forEach(i => { if (!i.taken) ctx.drawImage(starImg, i.x, i.y, i.w, i.h); });
+
+            enemies.forEach(en => {
+                if (!en.alive) return;
+                let img = mouseImg; if (en.type === 'blob') img = blobImg; if (en.type === 'ghost') img = ghostImg;
+                ctx.save(); if (en.type === 'ghost') ctx.globalAlpha = 0.8;
+                ctx.drawImage(img, en.x, en.y, en.w, en.h); ctx.restore();
+            });
+
+            bombs.forEach(b => { if (b.active) ctx.drawImage(bombImg, b.x, b.y, b.w, b.h); });
+
+            let sprite = playerImg;
+            if (player.jumping) sprite = playerJump;
+            else if (Math.abs(player.dx) > 0.1) sprite = (Math.floor(Date.now() / 100) % 2) ? playerWalk : playerImg;
+
+            ctx.save(); if (player.invulnerable) ctx.globalAlpha = 0.5;
+            if (!player.facingRight) { ctx.translate(player.x + player.w, 0); ctx.scale(-1, 1); ctx.drawImage(sprite, 0, player.y, player.w, player.h); }
+            else { ctx.drawImage(sprite, player.x, player.y, player.w, player.h); }
+            ctx.restore(); ctx.restore();
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>
